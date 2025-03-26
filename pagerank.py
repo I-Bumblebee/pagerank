@@ -57,7 +57,20 @@ def transition_model(corpus, page, damping_factor):
     linked to by `page`. With probability `1 - damping_factor`, choose
     a link at random chosen from all pages in the corpus.
     """
-    raise NotImplementedError
+    distribution = {}
+    n = len(corpus)
+    
+    if corpus[page]:
+        for p in corpus:
+            distribution[p] = (1 - damping_factor) / n
+        
+        for link in corpus[page]:
+            distribution[link] += damping_factor / len(corpus[page])
+    else:
+        for p in corpus:
+            distribution[p] = 1 / n
+    
+    return distribution
 
 
 def sample_pagerank(corpus, damping_factor, n):
@@ -69,7 +82,19 @@ def sample_pagerank(corpus, damping_factor, n):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
-    raise NotImplementedError
+    ranks = {page: 0 for page in corpus}
+    
+    current = random.choice(list(corpus.keys()))
+    ranks[current] += 1
+    
+    for _ in range(n - 1):
+        probs = transition_model(corpus, current, damping_factor)
+        pages = list(probs.keys())
+        weights = [probs[p] for p in pages]
+        current = random.choices(pages, weights=weights)[0]
+        ranks[current] += 1
+    
+    return {page: rank / n for page, rank in ranks.items()}
 
 
 def iterate_pagerank(corpus, damping_factor):
@@ -81,7 +106,34 @@ def iterate_pagerank(corpus, damping_factor):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
-    raise NotImplementedError
+    n = len(corpus)
+    ranks = {page: 1 / n for page in corpus}
+    
+    modified_corpus = corpus.copy()
+    for page, links in corpus.items():
+        if not links:
+            modified_corpus[page] = set(corpus.keys())
+    
+    while True:
+        new_ranks = {}
+        max_change = 0
+        
+        for page in corpus:
+            new_rank = (1 - damping_factor) / n
+            
+            for linking_page, links in modified_corpus.items():
+                if page in links:
+                    new_rank += damping_factor * ranks[linking_page] / len(links)
+            
+            new_ranks[page] = new_rank
+            max_change = max(max_change, abs(new_ranks[page] - ranks[page]))
+        
+        ranks = new_ranks
+        
+        if max_change < 0.001:
+            break
+    
+    return ranks
 
 
 if __name__ == "__main__":
